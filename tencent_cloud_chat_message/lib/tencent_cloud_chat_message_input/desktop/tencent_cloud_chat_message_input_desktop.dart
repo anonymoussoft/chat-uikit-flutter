@@ -83,6 +83,16 @@ void Function(String userID, String label, String text)?
 /// harness wrote to a path the app can read. Null when no composer is mounted.
 void Function(String imagePath)? debugRealUiDesktopPasteImagePath;
 
+/// Debug-only: WHICH conversation the mounted desktop composer is bound to —
+/// its `inputData.userID` / `groupID`, read live. The desktop twin of
+/// `debugRealUiMobileComposerBinding`: toxee's `l3_composer_send` reports it as
+/// `boundUserID` / `boundGroupID` so a driver can gate a send on the composer
+/// actually being the target conversation's, instead of trusting
+/// `currentConversation` (which the app binds before the composer remounts).
+/// Null when no desktop composer is mounted.
+({String? userID, String? groupID}) Function()?
+    debugRealUiDesktopComposerBinding;
+
 class TencentCloudChatMessageInputDesktop extends StatefulWidget {
   final MessageInputBuilderData inputData;
   final MessageInputBuilderMethods inputMethods;
@@ -132,6 +142,7 @@ class _TencentCloudChatMessageInputDesktopState
       debugRealUiDesktopComposerSetText = _desktopSetTextTearoff;
       debugRealUiDesktopComposerMentionSend = _desktopMentionSendTearoff;
       debugRealUiDesktopPasteImagePath = _desktopPasteImagePathTearoff;
+      debugRealUiDesktopComposerBinding = _desktopBindingTearoff;
     }
     _textEditingFocusNode.requestFocus();
     _scrollController = ScrollController();
@@ -149,11 +160,10 @@ class _TencentCloudChatMessageInputDesktopState
       // Real-UI L3 composer-SEND seam: set the text then invoke the exact
       // production send path (same as the Enter-key handler below). Lets a macOS
       // peer send via the VM service without osascript keyboard focus.
-      debugRealUiDesktopComposerSendText = (text) {
-        if (!mounted) return;
-        _setDesktopText(text);
-        _submitDesktopSend();
-      };
+      // A stored tearoff (not an inline closure) so dispose can clear the slot
+      // only while it is still OURS — on a conversation switch the successor
+      // composer mounts and registers BEFORE this one is disposed.
+      debugRealUiDesktopComposerSendText = _desktopSendTextTearoff;
     }
     _setDraftContext();
     unawaited(_loadDraft());
@@ -206,10 +216,14 @@ class _TencentCloudChatMessageInputDesktopState
         debugRealUiDesktopPasteImagePath, _desktopPasteImagePathTearoff)) {
       debugRealUiDesktopPasteImagePath = null;
     }
-    super.dispose();
-    if (kDebugMode) {
+    if (identical(debugRealUiDesktopComposerBinding, _desktopBindingTearoff)) {
+      debugRealUiDesktopComposerBinding = null;
+    }
+    if (identical(
+        debugRealUiDesktopComposerSendText, _desktopSendTextTearoff)) {
       debugRealUiDesktopComposerSendText = null;
     }
+    super.dispose();
     _textEditingController.dispose();
     _textEditingFocusNode.dispose();
     removeUIKitListener();
@@ -223,6 +237,21 @@ class _TencentCloudChatMessageInputDesktopState
       _mentionSend;
   late final void Function(String) _desktopPasteImagePathTearoff =
       _pasteImagePath;
+  late final void Function(String) _desktopSendTextTearoff = _sendDesktopText;
+  late final ({String? userID, String? groupID}) Function()
+      _desktopBindingTearoff = _desktopBinding;
+
+  /// Body of [debugRealUiDesktopComposerSendText]: set the text then invoke
+  /// the exact production send path (same as the Enter-key handler). Lets a
+  /// macOS peer send via the VM service without osascript keyboard focus.
+  void _sendDesktopText(String text) {
+    if (!mounted) return;
+    _setDesktopText(text);
+    _submitDesktopSend();
+  }
+
+  ({String? userID, String? groupID}) _desktopBinding() =>
+      (userID: widget.inputData.userID, groupID: widget.inputData.groupID);
 
   /// Send an @-mention to [userID] (display [label]) followed by [text], exactly
   /// as a real select-member-then-send would: the userID rides in

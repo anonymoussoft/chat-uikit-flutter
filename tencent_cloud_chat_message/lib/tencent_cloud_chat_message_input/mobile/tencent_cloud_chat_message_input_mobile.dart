@@ -63,6 +63,18 @@ void Function(String text)? debugRealUiMobileComposerSendText;
 /// answered `no_active_composer` on every phone/tablet shell.
 void Function()? debugRealUiMobileComposerSend;
 
+/// L3 real-UI test seam (debug builds only): WHICH conversation the mounted
+/// mobile composer is bound to — its `inputData.userID` / `groupID`, read live.
+/// The send seams above are process-global and are re-registered by every
+/// composer that mounts, and on a phone the app binds `currentConversation`
+/// BEFORE it pushes the new message route (whose composer registers on
+/// mount) — so a driver that sends as soon as the conversation id reads right
+/// hands its text to the PREVIOUS chat's composer. toxee's `l3_composer_send`
+/// reports this as `boundUserID` / `boundGroupID` and drivers gate a group send
+/// on it. Null in release and whenever no mobile input is mounted.
+({String? userID, String? groupID}) Function()?
+    debugRealUiMobileComposerBinding;
+
 class TencentCloudChatMessageInputMobile extends StatefulWidget {
   final MessageInputBuilderData inputData;
   final MessageInputBuilderMethods inputMethods;
@@ -268,6 +280,42 @@ class _TencentCloudChatMessageInputMobileState
     }
   }
 
+  // Bodies of the L3 real-UI seams (debug only; see the top-of-file notes).
+  // Mutating the controller text fires `_onTextChanged`, which flips
+  // `_showSendButton` and rebuilds — so `chat_send_button` becomes tappable;
+  // the actual send stays the real button tap by the driver.
+  void _debugSetComposerText(String text) {
+    if (!mounted) return;
+    _textEditingController.text = text;
+  }
+
+  // Set the text then invoke the exact production send path the
+  // chat_send_button onTap runs (see the InkWell in the build method below).
+  // Bypasses the synthetic button tap, which does not reliably fire on a
+  // compact phone.
+  void _debugSendComposerText(String text) {
+    if (!mounted) return;
+    _textEditingController.text = text;
+    _submitTextMessage();
+  }
+
+  // Send-only twin: submit the CURRENT field contents. Same production path.
+  void _debugSendComposer() {
+    if (!mounted) return;
+    _submitTextMessage();
+  }
+
+  ({String? userID, String? groupID}) _debugComposerBinding() =>
+      (userID: widget.inputData.userID, groupID: widget.inputData.groupID);
+
+  late final void Function(String) _mobileSetTextTearoff =
+      _debugSetComposerText;
+  late final void Function(String) _mobileSendTextTearoff =
+      _debugSendComposerText;
+  late final void Function() _mobileSendTearoff = _debugSendComposer;
+  late final ({String? userID, String? groupID}) Function()
+      _mobileBindingTearoff = _debugComposerBinding;
+
   void _addTextInputEvent() {
     try {
       _animationController = AnimationController(
@@ -275,29 +323,15 @@ class _TencentCloudChatMessageInputMobileState
       _messageAttachmentOptions.init(vsync: this, context: context);
       _textEditingController.addListener(_onTextChanged);
       if (kDebugMode) {
-        // Register the L3 real-UI composer-set-text seam (see top-of-file note).
-        debugRealUiMobileComposerSetText = (text) {
-          if (!mounted) return;
-          // Mutating the controller text fires `_onTextChanged`, which flips
-          // `_showSendButton` and rebuilds — so `chat_send_button` becomes
-          // tappable. The actual send stays the real button tap by the driver.
-          _textEditingController.text = text;
-        };
-        // Register the L3 real-UI composer-SEND seam: set the text then invoke
-        // the exact same production send path as the chat_send_button onTap
-        // (see the InkWell in the build method below). Bypasses the synthetic
-        // button tap, which does not reliably fire on a compact phone.
-        debugRealUiMobileComposerSendText = (text) {
-          if (!mounted) return;
-          _textEditingController.text = text;
-          _submitTextMessage();
-        };
-        // Send-only twin: submit the CURRENT field contents (see the seam's
-        // doc). Same production path, no assignment.
-        debugRealUiMobileComposerSend = () {
-          if (!mounted) return;
-          _submitTextMessage();
-        };
+        // Register the L3 real-UI composer seams (see the top-of-file notes).
+        // Stored tearoffs, so `_removeTextInputEvent` can clear a slot only
+        // while it is still OURS: a successor composer for another
+        // conversation mounts (and registers) BEFORE this one is disposed on a
+        // keyed remount, and an unconditional null here wiped its seams.
+        debugRealUiMobileComposerSetText = _mobileSetTextTearoff;
+        debugRealUiMobileComposerSendText = _mobileSendTextTearoff;
+        debugRealUiMobileComposerSend = _mobileSendTearoff;
+        debugRealUiMobileComposerBinding = _mobileBindingTearoff;
       }
       _textEditingFocusNode.addListener(() {
         if (_textEditingFocusNode.hasFocus) {
@@ -322,9 +356,21 @@ class _TencentCloudChatMessageInputMobileState
       _messageAttachmentOptions.dispose();
       _animationController = null;
       if (kDebugMode) {
-        debugRealUiMobileComposerSetText = null;
-        debugRealUiMobileComposerSendText = null;
-        debugRealUiMobileComposerSend = null;
+        if (identical(
+            debugRealUiMobileComposerSetText, _mobileSetTextTearoff)) {
+          debugRealUiMobileComposerSetText = null;
+        }
+        if (identical(
+            debugRealUiMobileComposerSendText, _mobileSendTextTearoff)) {
+          debugRealUiMobileComposerSendText = null;
+        }
+        if (identical(debugRealUiMobileComposerSend, _mobileSendTearoff)) {
+          debugRealUiMobileComposerSend = null;
+        }
+        if (identical(
+            debugRealUiMobileComposerBinding, _mobileBindingTearoff)) {
+          debugRealUiMobileComposerBinding = null;
+        }
       }
       _textEditingController.removeListener(_onTextChanged);
       _textEditingController.clear();
