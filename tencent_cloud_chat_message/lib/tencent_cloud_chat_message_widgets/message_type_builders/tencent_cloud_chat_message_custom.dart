@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:tencent_cloud_chat_common/data/theme/color/color_base.dart';
@@ -178,13 +179,18 @@ class _TencentCloudChatMessageCustomState
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            lineOne,
-            style: TextStyle(
-                color: sentFromSelf
-                    ? colorTheme.selfMessageTextColor
-                    : colorTheme.othersMessageTextColor,
-                fontSize: textStyle.messageBody),
+          // Flexible: a bare Text in a Row is unbounded and ignores the
+          // bubble's maxWidth, so a long custom payload overflowed.
+          Flexible(
+            child: Text(
+              lineOne,
+              softWrap: true,
+              style: TextStyle(
+                  color: sentFromSelf
+                      ? colorTheme.selfMessageTextColor
+                      : colorTheme.othersMessageTextColor,
+                  fontSize: textStyle.messageBody),
+            ),
           )
         ],
       );
@@ -192,28 +198,33 @@ class _TencentCloudChatMessageCustomState
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                lineOne,
-                style: TextStyle(
-                    color: sentFromSelf
-                        ? colorTheme.selfMessageTextColor
-                        : colorTheme.othersMessageTextColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: textStyle.messageBody),
-              ),
-              Text(
-                lineTwo,
-                style: TextStyle(
-                    color: (sentFromSelf
-                            ? colorTheme.selfMessageTextColor
-                            : colorTheme.othersMessageTextColor)
-                        .withOpacity(0.9),
-                    fontSize: textStyle.messageBody - 1),
-              )
-            ],
+          // Flexible for the same reason as the single-line branch above.
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  lineOne,
+                  softWrap: true,
+                  style: TextStyle(
+                      color: sentFromSelf
+                          ? colorTheme.selfMessageTextColor
+                          : colorTheme.othersMessageTextColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: textStyle.messageBody),
+                ),
+                Text(
+                  lineTwo,
+                  softWrap: true,
+                  style: TextStyle(
+                      color: (sentFromSelf
+                              ? colorTheme.selfMessageTextColor
+                              : colorTheme.othersMessageTextColor)
+                          .withOpacity(0.9),
+                      fontSize: textStyle.messageBody - 1),
+                )
+              ],
+            ),
           )
         ],
       );
@@ -259,14 +270,21 @@ class _TencentCloudChatMessageCustomState
           ),
           borderRadius: BorderRadius.all(Radius.circular(getSquareSize(12))),
         ),
-        child: Row(
+        // LayoutBuilder: the width formula ignores what the row really left
+        // after avatars / selection checkbox (174 px on a 320-px phone vs a
+        // 234-px cap), so intersect it with the bubble's actual interior.
+        child: LayoutBuilder(builder: (context, bubble) {
+          final double cap = bubble.hasBoundedWidth
+              ? min(maxBubbleWidth - 22, bubble.maxWidth)
+              : maxBubbleWidth - 22;
+          return Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: maxBubbleWidth - 22,
-                minWidth: 100,
+                maxWidth: cap,
+                minWidth: min(100, cap),
               ),
               child: Stack(
                 children: [
@@ -286,7 +304,8 @@ class _TencentCloudChatMessageCustomState
               ),
             ),
           ],
-        ),
+        );
+        }),
       );
     });
   }

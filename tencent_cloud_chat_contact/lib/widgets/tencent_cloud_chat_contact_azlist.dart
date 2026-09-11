@@ -7,6 +7,7 @@ import 'package:tencent_cloud_chat_common/models/tencent_cloud_chat_models.dart'
 import 'package:tencent_cloud_chat_common/tencent_cloud_chat.dart';
 import 'package:tencent_cloud_chat_common/base/tencent_cloud_chat_state_widget.dart';
 import 'package:tencent_cloud_chat_common/base/tencent_cloud_chat_theme_widget.dart';
+import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_contact_index_bar_fit.dart';
 import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_contact_item.dart';
 
 class TencentCloudChatContactAzlist extends StatefulWidget {
@@ -105,28 +106,40 @@ class TencentCloudChatContactAzlistState
     final hasFriendEntries =
         showFriendList.any((e) => e.getSuspensionTag() != '@');
     if (!hasFriendEntries) {
+      // Scrollable (not a bare Column): the tabs + empty label exceed a short
+      // contact pane (landscape phone, split desktop), which would overflow.
       return TencentCloudChatThemeWidget(
-        build: (context, colors, fontSize) => Column(
-          children: [
-            ...showFriendList
-                .map((e) => TencentCloudChat
-                    .instance.dataInstance.contact.contactBuilder
-                    ?.getContactListTabItemBuilder(e.friendInfo))
-                .toList(),
-            Padding(
-              padding: EdgeInsets.only(top: getHeight(28)),
-              child: Center(
-                child: Text(
-                  tL10n.noContact,
-                  style: TextStyle(
-                    fontSize: fontSize.fontsize_14,
-                    color: colors.contactNoListColor,
-                    fontWeight: FontWeight.w500,
+        build: (context, colors, fontSize) => LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight:
+                    constraints.maxHeight.isFinite ? constraints.maxHeight : 0,
+              ),
+              child: Column(
+                children: [
+                  ...showFriendList
+                      .map((e) => TencentCloudChat
+                          .instance.dataInstance.contact.contactBuilder
+                          ?.getContactListTabItemBuilder(e.friendInfo))
+                      .toList(),
+                  Padding(
+                    padding: EdgeInsets.only(top: getHeight(28)),
+                    child: Center(
+                      child: Text(
+                        tL10n.noContact,
+                        style: TextStyle(
+                          fontSize: fontSize.fontsize_14,
+                          color: colors.contactNoListColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       );
     }
@@ -134,38 +147,47 @@ class TencentCloudChatContactAzlistState
     final indexTags = SuspensionUtil.getTagIndexList(showFriendList)
         .where((element) => element != "@")
         .toList();
-    return Scrollbar(
-        child: AzListView(
-      // Shared with the component controller so the host app can scroll this
-      // list back to the top (bottom-nav re-tap convention).
-      itemScrollController: _itemScrollController,
-      physics:
-          const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      data: showFriendList,
-      itemCount: showFriendList.length,
+    return LayoutBuilder(builder: (context, constraints) {
       // The A-Z jump bar only earns its place once there is something to jump
       // across; with a handful of letters it floats as stray glyphs beside an
       // otherwise empty column. Section headers still render regardless.
-      indexBarData: indexTags.length >= 6 ? indexTags : const <String>[],
-      itemBuilder: (context, index) {
-        if (showFriendList[index].friendInfo is TTabItem) {
+      final indexBar = TencentCloudChatIndexBarFit.fit(
+          indexTags.length >= 6 ? indexTags : const <String>[],
+          constraints.maxHeight,
+          textScale: MediaQuery.textScalerOf(context).scale(1.0));
+      return Scrollbar(
+          child: AzListView(
+        // Shared with the component controller so the host app can scroll this
+        // list back to the top (bottom-nav re-tap convention).
+        itemScrollController: _itemScrollController,
+        physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics()),
+        data: showFriendList,
+        itemCount: showFriendList.length,
+        indexBarData: indexBar.tags,
+        indexBarItemHeight: indexBar.itemHeight,
+        indexBarOptions: indexBar.options,
+          itemBuilder: (context, index) {
+          if (showFriendList[index].friendInfo is TTabItem) {
+            return TencentCloudChat.instance.dataInstance.contact.contactBuilder
+                ?.getContactListTabItemBuilder(
+                    showFriendList[index].friendInfo);
+          } else {
+            final friend = showFriendList[index].friendInfo;
+            return TencentCloudChatContactItem(friend: friend);
+          }
+        },
+        susItemBuilder: (context, index) {
+          ISuspensionBeanImpl tag = showFriendList[index];
+          if (tag.getSuspensionTag() == "@") {
+            return Container();
+          }
           return TencentCloudChat.instance.dataInstance.contact.contactBuilder
-              ?.getContactListTabItemBuilder(showFriendList[index].friendInfo);
-        } else {
-          final friend = showFriendList[index].friendInfo;
-          return TencentCloudChatContactItem(friend: friend);
-        }
-      },
-      susItemBuilder: (context, index) {
-        ISuspensionBeanImpl tag = showFriendList[index];
-        if (tag.getSuspensionTag() == "@") {
-          return Container();
-        }
-        return TencentCloudChat.instance.dataInstance.contact.contactBuilder
-            ?.getContactListTagBuilder(tag.getSuspensionTag());
-      },
-      susItemHeight: getSquareSize(30),
-    ));
+              ?.getContactListTagBuilder(tag.getSuspensionTag());
+        },
+        susItemHeight: getSquareSize(30),
+      ));
+    });
   }
 }
 

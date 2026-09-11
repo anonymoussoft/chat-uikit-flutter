@@ -9,6 +9,7 @@ import 'package:tencent_cloud_chat_common/utils/tencent_cloud_chat_safe_dialog_p
 import 'package:tencent_cloud_chat_contact/widgets/create_group.dart';
 import 'package:azlistview_all_platforms/azlistview_all_platforms.dart';
 import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_contact_azlist.dart';
+import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_contact_index_bar_fit.dart';
 
 class StartGroupChat extends StatefulWidget {
   const StartGroupChat({super.key});
@@ -142,10 +143,17 @@ class _StartGroupChatState extends TencentCloudChatState<StartGroupChat> {
       );
     }
 
-    return AzListView(
+    return LayoutBuilder(builder: (context, constraints) {
+      final indexBar = TencentCloudChatIndexBarFit.fit(
+          SuspensionUtil.getTagIndexList(sortedFriendList).where((element) => element != "@").toList(),
+          constraints.maxHeight,
+          textScale: MediaQuery.textScalerOf(context).scale(1.0));
+      return AzListView(
       data: sortedFriendList,
       itemCount: sortedFriendList.length,
-      indexBarData: SuspensionUtil.getTagIndexList(sortedFriendList).where((element) => element != "@").toList(),
+      indexBarData: indexBar.tags,
+      indexBarItemHeight: indexBar.itemHeight,
+      indexBarOptions: indexBar.options,
       itemBuilder: (context, index) {
         V2TimFriendInfo friendInfo = sortedFriendList[index].friendInfo;
         final isSelected = selectedMembers.any((friend) => friend.userID == friendInfo.userID);
@@ -210,6 +218,7 @@ class _StartGroupChatState extends TencentCloudChatState<StartGroupChat> {
       },
       physics: const ClampingScrollPhysics(),
     );
+    });
   }
 
   Widget _buildCustomCheckbox(bool isSelected, dynamic colorTheme) {

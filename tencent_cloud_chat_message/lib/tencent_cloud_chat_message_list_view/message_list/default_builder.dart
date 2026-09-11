@@ -91,40 +91,49 @@ Widget defaultUnreadMsgTipBuilder(BuildContext context, int unreadMsgCount) {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            margin: const EdgeInsets.only(right: 20),
-            child: SizedBox(
-              height: 1,
-              width: 100,
-              child: Container(
-                  decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  colorTheme.primaryColor.withOpacity(0),
-                  colorTheme.primaryColor,
-                ]),
-              )),
+          // Expanded rules + Flexible label: the old fixed 100px rules made
+          // the divider ~370px wide, overflowing narrow phones / desktop panes.
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(right: 20),
+              child: SizedBox(
+                height: 1,
+                child: Container(
+                    decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    colorTheme.primaryColor.withOpacity(0),
+                    colorTheme.primaryColor,
+                  ]),
+                )),
+              ),
             ),
           ),
-          Text(
-            tL10n.unreadMessagesBelow,
-            style: TextStyle(
-              fontSize: textStyle.fontsize_12,
-              fontWeight: FontWeight.w500,
-              color: colorTheme.primaryColor,
+          Flexible(
+            child: Text(
+              tL10n.unreadMessagesBelow,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: textStyle.fontsize_12,
+                fontWeight: FontWeight.w500,
+                color: colorTheme.primaryColor,
+              ),
             ),
           ),
-          Container(
-            margin: const EdgeInsets.only(left: 20),
-            child: SizedBox(
-              height: 1,
-              width: 100,
-              child: Container(
-                  decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  colorTheme.primaryColor,
-                  colorTheme.primaryColor.withOpacity(0),
-                ]),
-              )),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(left: 20),
+              child: SizedBox(
+                height: 1,
+                child: Container(
+                    decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    colorTheme.primaryColor,
+                    colorTheme.primaryColor.withOpacity(0),
+                  ]),
+                )),
+              ),
             ),
           ),
         ],

@@ -40,7 +40,11 @@ void showTencentCloudChatBottomModal({
                   bottom: MediaQuery.paddingOf(context).bottom,
                 ),
                 color: colorTheme.inputAreaBackground,
-                child: Column(
+                // Scrollable: the sheet's max height is 9/16 of the window, so
+                // a long action list on a short phone overflowed instead of
+                // scrolling.
+                child: SingleChildScrollView(
+                  child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     ...actions.map(
@@ -74,6 +78,7 @@ void showTencentCloudChatBottomModal({
                       ),
                     ),
                   ],
+                  ),
                 ),
               )));
     },

@@ -336,6 +336,8 @@ class _CreateGroupChatState extends TencentCloudChatState<CreateGroupChat> {
                   onPressed: () => popDialogIfCurrent(context),
                   child: Text(
                     tL10n.cancel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: colorTheme.primaryColor),
                   ),
                 ),

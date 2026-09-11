@@ -149,7 +149,7 @@ class TencentCloudChatContactItemState extends TencentCloudChatState<TencentClou
                 }
               : null,
           child: Container(
-            width: MediaQuery.of(context).size.width,
+            width: double.infinity,
             padding: EdgeInsets.symmetric(
               vertical: getHeight(7),
               horizontal: getWidth(3),
@@ -309,7 +309,7 @@ class TencentCloudChatContactListTagState extends TencentCloudChatState<TencentC
   Widget defaultBuilder(BuildContext context) {
     return Container(
         height: getSquareSize(40),
-        width: MediaQuery.of(context).size.width,
+        width: double.infinity,
         padding: const EdgeInsets.only(left: 16.0, bottom: 5),
         // color: Color.fromARGB(255, 255, 255, 255),
         alignment: Alignment.bottomLeft,

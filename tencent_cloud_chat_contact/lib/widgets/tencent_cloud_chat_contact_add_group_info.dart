@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:tencent_cloud_chat_common/components/tencent_cloud_chat_components_utils.dart';
 import 'package:tencent_cloud_chat_common/tencent_cloud_chat.dart';
@@ -21,7 +23,9 @@ class TencentCloudChatContactAddGroupInfoState extends TencentCloudChatState<Ten
   Widget defaultBuilder(BuildContext context) {
     return TencentCloudChatThemeWidget(
         build: (context, colorTheme, textStyle) => Container(
-            height: getHeight(775),
+            // Never taller than the sheet route's area (the caller passes
+            // useSafeArea: true, so the status bar is already excluded).
+            height: min(getHeight(775), MediaQuery.sizeOf(context).height),
             decoration: BoxDecoration(
                 color: colorTheme.contactAddContactInfoBackgroundColor,
                 borderRadius: BorderRadius.all(Radius.circular(getWidth(10)))),

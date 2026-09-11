@@ -621,10 +621,21 @@ class _TencentCloudChatMessageInputDesktopState
             RenderBox? toolBarRenderBox =
                 toolbarKey.currentContext?.findRenderObject() as RenderBox;
             var offset = detail.localPosition;
+            // The panel is a Positioned child of the message-pane Stack, so
+            // its X must be pane-relative. detail.localPosition is ICON-local
+            // (0..~24), which parked the panel at the pane's left edge. This
+            // input root spans the pane width, so its local space == pane space.
+            final RenderObject? inputRoot = context.findRenderObject();
+            final double paneX = inputRoot is RenderBox
+                ? inputRoot
+                    .globalToLocal(
+                        toolBarRenderBox.localToGlobal(Offset.zero))
+                    .dx
+                : offset.dx;
 
             e.onTap(
               offset: Offset(
-                  offset.dx,
+                  paneX,
                   renderBox.size.height +
                       toolBarRenderBox.size.height +
                       20), // 20 为margin
@@ -989,7 +1000,9 @@ class _TencentCloudChatMessageInputDesktopState
                                 null)
                               Expanded(
                                   child: Container(
-                                height: 35,
+                                // minHeight: a wrapped status text must grow
+                                // the bar, not clip.
+                                constraints: const BoxConstraints(minHeight: 35),
                                 color: colorTheme.backgroundColor,
                                 alignment: Alignment.center,
                                 child: Text(

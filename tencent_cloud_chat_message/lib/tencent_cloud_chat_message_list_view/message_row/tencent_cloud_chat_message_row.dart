@@ -47,6 +47,14 @@ class _TencentCloudChatMessageRowState
     }
   }
 
+  // Desktop rows already place the avatar slot OUTSIDE the bubble, so the
+  // bubble budget is 0.8W capped at 90%; subtracting the slot again (128/102)
+  // starved narrow panes (214 px at W=428). Floor keeps status+time on one line.
+  double _desktopBubbleMaxWidth() {
+    final maxBubbleWidth = widget.data.messageRowWidth * 0.8;
+    return max(getSquareSize(160), maxBubbleWidth * 0.9);
+  }
+
   @override
   Widget desktopBuilder(BuildContext context) {
     late Map<String, dynamic> cloudCustomData;
@@ -111,36 +119,42 @@ class _TencentCloudChatMessageRowState
                                 child: widget.widgets.messageRowAvatar,
                               ),
                             ),
-                          Column(
-                            crossAxisAlignment: (widget.data.message.isSelf ?? true) ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                            children: [
-                              if (widget.data.showMessageSenderName) widget.widgets.messageRowMessageSenderName,
-                              ConstrainedBox(
-                                constraints: BoxConstraints(
-                                    maxWidth:
-                                        widget.data.messageRowWidth * 0.8),
-                                child: widget.widgets.messageRowMessageItem ??
-                                    Container(),
-                              ),
-                              if (widget.widgets.messageTextTranslateItem != null) ...[
-                                const SizedBox(
-                                  height: 4,
-                                ),
+                          // Flexible (not Expanded): a bare Column in a Row is
+                          // horizontally UNBOUNDED, so a long sender name or
+                          // wide bubble overflowed the pane; Expanded would
+                          // steal the right-alignment of self messages.
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: (widget.data.message.isSelf ?? true) ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                if (widget.data.showMessageSenderName) widget.widgets.messageRowMessageSenderName,
                                 ConstrainedBox(
-                                  constraints: BoxConstraints(maxWidth: min(widget.data.messageRowWidth * 0.8 * 0.9, widget.data.messageRowWidth * 0.8 - getSquareSize((_message.isSelf ?? false) ? 128 : 102))),
-                                  child: widget.widgets.messageTextTranslateItem ?? Container(),
-                                )
-                              ],
-                              if (widget.widgets.messageSoundToTextItem != null) ...[
-                                const SizedBox(
-                                  height: 4,
+                                  constraints: BoxConstraints(
+                                      maxWidth:
+                                          widget.data.messageRowWidth * 0.8),
+                                  child: widget.widgets.messageRowMessageItem ??
+                                      Container(),
                                 ),
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(maxWidth: min(widget.data.messageRowWidth * 0.8 * 0.9, widget.data.messageRowWidth * 0.8 - getSquareSize((_message.isSelf ?? false) ? 128 : 102))),
-                                  child: widget.widgets.messageSoundToTextItem ?? Container(),
-                                )
+                                if (widget.widgets.messageTextTranslateItem != null) ...[
+                                  const SizedBox(
+                                    height: 4,
+                                  ),
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(maxWidth: _desktopBubbleMaxWidth()),
+                                    child: widget.widgets.messageTextTranslateItem ?? Container(),
+                                  )
+                                ],
+                                if (widget.widgets.messageSoundToTextItem != null) ...[
+                                  const SizedBox(
+                                    height: 4,
+                                  ),
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(maxWidth: _desktopBubbleMaxWidth()),
+                                    child: widget.widgets.messageSoundToTextItem ?? Container(),
+                                  )
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                           if ((widget.data.message.isSelf ?? true) &&
                               widget.data.showSelfAvatar)

@@ -14,6 +14,7 @@ import 'package:tencent_cloud_chat_common/base/tencent_cloud_chat_theme_widget.d
 import 'package:tencent_cloud_chat_common/tencent_cloud_chat_common.dart';
 import 'package:tencent_cloud_chat_common/widgets/dialog/tencent_cloud_chat_dialog.dart';
 import 'package:tencent_cloud_chat_contact/model/contact_presenter.dart';
+import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_contact_index_bar_fit.dart';
 import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_group_member_info.dart';
 
 // toxee: keep these in sync with lib/util/responsive_layout.dart —
@@ -277,7 +278,14 @@ class TencentCloudChatGroupMemberListAzListState
     if (widget.memberInfoList.isEmpty) {
       return Container();
     }
-    return Scrollbar(
+    return LayoutBuilder(builder: (context, constraints) {
+      final indexBar = TencentCloudChatIndexBarFit.fit(
+          SuspensionUtil.getTagIndexList(list)
+              .where((element) => element != "@")
+              .toList(),
+          constraints.maxHeight,
+          textScale: MediaQuery.textScalerOf(context).scale(1.0));
+      return Scrollbar(
         child: AzListView(
       data: list,
       itemCount: list.length,
@@ -309,9 +317,9 @@ class TencentCloudChatGroupMemberListAzListState
           ),
         );
       },
-      indexBarData: SuspensionUtil.getTagIndexList(list)
-          .where((element) => element != "@")
-          .toList(),
+      indexBarData: indexBar.tags,
+      indexBarItemHeight: indexBar.itemHeight,
+      indexBarOptions: indexBar.options,
       physics:
           const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       susItemBuilder: (context, index) {
@@ -323,6 +331,7 @@ class TencentCloudChatGroupMemberListAzListState
       },
       susItemHeight: getSquareSize(30),
     ));
+    });
   }
 }
 
@@ -866,7 +875,7 @@ class TencentCloudChatGroupMemberListTagState
               color: colorTheme.backgroundColor,
             ),
             height: getSquareSize(40),
-            width: MediaQuery.of(context).size.width,
+            width: double.infinity,
             padding: const EdgeInsets.only(left: 16.0, bottom: 3),
             // color: Color.fromARGB(255, 255, 255, 255),
             alignment: Alignment.bottomLeft,

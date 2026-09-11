@@ -169,13 +169,22 @@ class TencentCloudChatConversationItemState
     ];
 
     final tapDetails = details;
-    final double dy =
-        min(tapDetails.globalPosition.dy, screenHeight - (items.length * 38))
-            .toDouble();
+    // Keep the menu on screen: 38 ≈ one column-menu row (14 px label + 8 px
+    // vertical padding), 350 is the column menu's max width.
+    final double dy = max(
+            8.0,
+            min(tapDetails.globalPosition.dy,
+                screenHeight - (items.length * 38)))
+        .toDouble();
+    final double dx = max(
+            8.0,
+            min(tapDetails.globalPosition.dx + 10,
+                MediaQuery.of(context).size.width - 350 - 8))
+        .toDouble();
 
     TencentCloudChatDesktopPopup.showColumnMenu(
       context: context,
-      offset: Offset(details.globalPosition.dx + 10, dy),
+      offset: Offset(dx, dy),
       items: items,
     );
   }
@@ -827,8 +836,10 @@ class TencentCloudChatConversationItemInfoUnreadCountState
       context, TencentCloudChatThemeColors colorTheme, textStyle) {
     String text = unReadCountDisplayText();
     return Container(
-      height: getHeight(16),
-      width: text.length == 1 ? getWidth(16) : getWidth(26),
+      // Min-size pill instead of a fixed 16/26 px box so "99+" still fits when
+      // the text scale grows; the shape/radius is unchanged.
+      constraints: BoxConstraints(minWidth: getWidth(16), minHeight: getHeight(16)),
+      padding: EdgeInsets.symmetric(horizontal: text.length == 1 ? 0 : getWidth(4)),
       decoration: BoxDecoration(
         color: colorTheme.conversationItemUnreadCountBgColor,
         borderRadius: BorderRadius.all(
@@ -837,7 +848,11 @@ class TencentCloudChatConversationItemInfoUnreadCountState
           ),
         ),
       ),
+      // Shrink-wrap: without the factors Center would fill the loose parent
+      // constraints now that the box has no fixed width.
       child: Center(
+        widthFactor: 1,
+        heightFactor: 1,
         child: Text(
           text,
           textAlign: TextAlign.center,
@@ -926,12 +941,18 @@ class TencentCloudChatConversationItemInfoTimeAndStatusState
       build: (context, colorTheme, textStyle) => Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Text(
-            timeText,
-            style: TextStyle(
-              fontSize: textStyle.fontsize_12,
-              fontWeight: FontWeight.w400,
-              color: colorTheme.conversationItemTimeTextColor,
+          // Flexible: the column is a fixed 96 px, and long weekday names in
+          // other locales (or large text scale) otherwise overflow it.
+          Flexible(
+            child: Text(
+              timeText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: textStyle.fontsize_12,
+                fontWeight: FontWeight.w400,
+                color: colorTheme.conversationItemTimeTextColor,
+              ),
             ),
           ),
         ],

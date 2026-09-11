@@ -27,11 +27,17 @@ class TencentCloudChatContactLeadingState
                   size: getSquareSize(24),
                 ),
                 Padding(padding: EdgeInsets.only(left: getWidth(8))),
-                Text(
-                  tL10n.back,
-                  style: TextStyle(
-                    color: colorTheme.contactBackButtonColor,
-                    fontSize: textStyle.fontsize_14,
+                // Flexible: hosts give this a fixed leadingWidth (100 px);
+                // long locales / large text would overflow it.
+                Flexible(
+                  child: Text(
+                    tL10n.back,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colorTheme.contactBackButtonColor,
+                      fontSize: textStyle.fontsize_14,
+                    ),
                   ),
                 )
               ]),

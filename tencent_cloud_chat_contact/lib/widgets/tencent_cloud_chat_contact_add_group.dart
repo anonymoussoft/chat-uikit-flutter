@@ -78,11 +78,17 @@ class TencentCloudChatContactAddGroupAppBarState extends TencentCloudChatState<T
                 child: Row(
                   children: [
                     Padding(padding: EdgeInsets.only(left: getWidth(15))),
-                    Text(
-                      tL10n.cancel,
-                      style: TextStyle(
-                        color: colorTheme.contactBackButtonColor,
-                        fontSize: textStyle.fontsize_16,
+                    // Flexible: the leading slot is a fixed 100 px; long
+                    // locales / large text would overflow it.
+                    Flexible(
+                      child: Text(
+                        tL10n.cancel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: colorTheme.contactBackButtonColor,
+                          fontSize: textStyle.fontsize_16,
+                        ),
                       ),
                     ),
                   ],
@@ -283,6 +289,9 @@ class TencentCloudChatContactAddGroupListItemState
         backgroundColor: Colors.transparent,
         context: context,
         isScrollControlled: true,
+        // Inset the sheet below the status bar; the builder caps its height
+        // to the MediaQuery this leaves it.
+        useSafeArea: true,
         builder: (context) {
           return TencentCloudChatContactAddGroupInfo(groupInfo: widget.groupInfo);
         });

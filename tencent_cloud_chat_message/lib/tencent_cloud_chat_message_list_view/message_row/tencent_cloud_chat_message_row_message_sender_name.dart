@@ -31,6 +31,8 @@ class _TencentCloudChatMessageRowMessageSenderNameState
                       margin: const EdgeInsets.only(bottom: 6),
                       child: Text(
                         TencentCloudChatUtils.getMessageSenderName(widget.data.message),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           height: 1,
                           color: colorTheme.secondaryTextColor,

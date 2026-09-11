@@ -1034,7 +1034,12 @@ class _TencentCloudChatMessageInputMobileState
 
   double _getBottomContainerHeight() {
     if (_showStickerPanel) {
-      return getHeight(280);
+      // The input is a non-flex Column child (unbounded height), so cap the
+      // panel at 40% of the visible window or it pushes the list off-screen
+      // on short phones / landscape.
+      final visibleHeight = MediaQuery.sizeOf(context).height -
+          MediaQuery.viewInsetsOf(context).bottom;
+      return min(getHeight(280), visibleHeight * 0.4);
     }
     // toxee 5.1: track the soft keyboard height via viewInsets so the sticker
     // panel can size to match the previously-seen keyboard height the first
@@ -1074,6 +1079,26 @@ class _TencentCloudChatMessageInputMobileState
     return false;
   }
 
+  /// Sticker mode: the sticker panel is the only part of the composer that
+  /// can give up height. Under a bounded parent (the layout caps the input)
+  /// it becomes Flexible and shrinks to what the reply bar + text field
+  /// leave. A Flexible under an unbounded parent would assert, and keyboard
+  /// mode scrolls instead (see [_scrollIfTight]), so it stays as-is there.
+  Widget _boundedPanel(BoxConstraints constraints, Widget panel) =>
+      constraints.hasBoundedHeight && _showStickerPanel
+          ? Flexible(child: panel)
+          : panel;
+
+  /// Keyboard mode: nothing in the composer can shrink, so when reply bar +
+  /// a multi-line draft exceed a keyboard-shrunk body (~118 px on a short
+  /// landscape window) the column scrolls, anchored at the text field so the
+  /// field stays fully visible, instead of overflowing. Shrink-wraps, so it
+  /// is invisible whenever the content fits.
+  Widget _scrollIfTight(BoxConstraints constraints, Widget column) =>
+      constraints.hasBoundedHeight && !_showStickerPanel
+          ? SingleChildScrollView(reverse: true, child: column)
+          : column;
+
   @override
   Widget defaultBuilder(BuildContext context) {
     if (widget.debugDraftPersistenceOnly) {
@@ -1111,7 +1136,10 @@ class _TencentCloudChatMessageInputMobileState
                     ? getSquareSize(8)
                     : getSquareSize(16),
               ),
-              child: Column(
+              child: _scrollIfTight(constraints, Column(
+                // min: the layout now hands the input a BOUNDED height; a max
+                // Column would grow to fill the whole cap.
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (widget.inputData.repliedMessage != null)
@@ -1165,7 +1193,7 @@ class _TencentCloudChatMessageInputMobileState
                       ),
                     ],
                   ),
-                  AnimatedContainer(
+                  _boundedPanel(constraints, AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.ease,
                     height: panelHeight,
@@ -1190,9 +1218,9 @@ class _TencentCloudChatMessageInputMobileState
                             ),
                           )
                         : Container(),
-                  )
+                  ))
                 ],
-              ),
+              )),
             ),
           );
         },

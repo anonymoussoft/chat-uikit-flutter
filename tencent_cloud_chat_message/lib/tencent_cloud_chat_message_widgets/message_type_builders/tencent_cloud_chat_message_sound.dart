@@ -291,7 +291,8 @@ class _TencentCloudChatMessageSoundState extends TencentCloudChatMessageState<Te
       onTapUp: onTapUp,
       child: Container(
         // width: generateSoundUILength(duration, maxBubbleWidth),
-        height: getHeight(34),
+        // minHeight, not height: large accessibility fonts must grow the pill.
+        constraints: BoxConstraints(minHeight: getHeight(34)),
         padding: EdgeInsets.symmetric(horizontal: getWidth(4), vertical: getHeight(4)),
         decoration: BoxDecoration(
           color: colorTheme.dividerColor,

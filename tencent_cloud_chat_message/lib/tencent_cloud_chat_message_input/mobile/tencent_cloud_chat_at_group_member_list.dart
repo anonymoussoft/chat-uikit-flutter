@@ -380,7 +380,9 @@ class TencentCloudChatGroupProfileMemberListTagState
             decoration: BoxDecoration(
               color: colorTheme.backgroundColor,
             ),
-            height: getSquareSize(40),
+            // minHeight, not height: susItemHeight is 0 here so the tag is a
+            // plain list row and may grow with large fonts.
+            constraints: BoxConstraints(minHeight: getSquareSize(40)),
             width: MediaQuery.of(context).size.width,
             padding: const EdgeInsets.only(left: 16.0, bottom: 3),
             alignment: Alignment.bottomLeft,

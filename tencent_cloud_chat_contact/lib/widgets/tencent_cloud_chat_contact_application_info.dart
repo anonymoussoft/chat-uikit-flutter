@@ -131,9 +131,14 @@ class TencentCloudChatContactApplicationInfoBodyState
                 ),
                 Row(
                   children: [
-                    TencentCloudChat.instance.dataInstance.contact.contactBuilder
-                        ?.getContactApplicationInfoButtonBuilder(
-                            widget.application, widget.resultFunction, widget.applicationResult)
+                    // Expanded: the buttons fill the row from bounded
+                    // constraints instead of sizing to the screen width.
+                    Expanded(
+                      child: TencentCloudChat.instance.dataInstance.contact.contactBuilder
+                              ?.getContactApplicationInfoButtonBuilder(
+                                  widget.application, widget.resultFunction, widget.applicationResult) ??
+                          const SizedBox.shrink(),
+                    )
                   ],
                 )
               ],
@@ -350,7 +355,7 @@ class TencentCloudChatContactApplicationInfoButtonState
     if (widget.applicationResult!.userID == widget.application.userID && widget.applicationResult!.result.isNotEmpty) {
       return TencentCloudChatThemeWidget(
           build: (context, colorTheme, textStyle) => Container(
-                width: MediaQuery.of(context).size.width,
+                width: double.infinity,
                 color: colorTheme.contactBackgroundColor,
                 margin: EdgeInsets.only(top: getHeight(20)),
                 padding: EdgeInsets.symmetric(horizontal: getWidth(20), vertical: getHeight(10)),
@@ -368,7 +373,7 @@ class TencentCloudChatContactApplicationInfoButtonState
         child: TencentCloudChatThemeWidget(
             build: (context, colorTheme, textStyle) => Column(children: [
                   Container(
-                      width: MediaQuery.of(context).size.width,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
@@ -391,7 +396,7 @@ class TencentCloudChatContactApplicationInfoButtonState
                           ))),
                   Container(
                       color: colorTheme.backgroundColor,
-                      width: MediaQuery.of(context).size.width,
+                      width: double.infinity,
                       padding: EdgeInsets.symmetric(vertical: getHeight(10), horizontal: getWidth(20)),
                       child: GestureDetector(
                           key: ValueKey(

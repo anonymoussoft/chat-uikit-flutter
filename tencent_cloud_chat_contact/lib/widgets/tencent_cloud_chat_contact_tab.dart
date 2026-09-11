@@ -81,15 +81,19 @@ class TencentCloudChatContactTabState
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            widget.item.name,
-                            style: TextStyle(
-                                fontSize: textStyle.fontsize_16,
-                                fontWeight: FontWeight.w400,
-                                color: colorTheme.contactItemTabItemNameColor),
-                          ),
+                          // Expanded: the name gets all remaining width (a
+                          // blank Expanded sibling used to take half of it).
                           Expanded(
-                            child: Container(),
+                            child: Text(
+                              widget.item.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: textStyle.fontsize_16,
+                                  fontWeight: FontWeight.w400,
+                                  color:
+                                      colorTheme.contactItemTabItemNameColor),
+                            ),
                           ),
                           getUnreadCount(),
                           Icon(
@@ -141,14 +145,17 @@ class TencentCloudChatContactTabState
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          widget.item.name,
-                          style: TextStyle(
-                              fontSize: textStyle.fontsize_14,
-                              color: colorTheme.secondaryTextColor),
-                        ),
+                        // Expanded: the name gets all remaining width (a
+                        // blank Expanded sibling used to take half of it).
                         Expanded(
-                          child: Container(),
+                          child: Text(
+                            widget.item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: textStyle.fontsize_14,
+                                color: colorTheme.secondaryTextColor),
+                          ),
                         ),
                         getUnreadCount(),
                         Icon(
@@ -190,8 +197,12 @@ class TencentCloudChatContactTabItemApplicationCountState
       String text = widget.count.toString();
       return TencentCloudChatThemeWidget(
           build: (context, colorTheme, textStyle) => Container(
-                height: getHeight(16),
-                width: text.length == 1 ? getWidth(16) : getWidth(26),
+                // Min-size pill instead of a fixed 16/26 px box so "99+" still
+                // fits when the text scale grows; shape/radius unchanged.
+                constraints: BoxConstraints(
+                    minWidth: getWidth(16), minHeight: getHeight(16)),
+                padding: EdgeInsets.symmetric(
+                    horizontal: text.length == 1 ? 0 : getWidth(4)),
                 decoration: BoxDecoration(
                   color: colorTheme.tipsColor,
                   borderRadius: BorderRadius.all(
@@ -200,7 +211,11 @@ class TencentCloudChatContactTabItemApplicationCountState
                     ),
                   ),
                 ),
+                // Shrink-wrap: without the factors Center would fill the
+                // loose parent constraints now that the box has no fixed width.
                 child: Center(
+                  widthFactor: 1,
+                  heightFactor: 1,
                   child: Text(
                     text,
                     textAlign: TextAlign.center,

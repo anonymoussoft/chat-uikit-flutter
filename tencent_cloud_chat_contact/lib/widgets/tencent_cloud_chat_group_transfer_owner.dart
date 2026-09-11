@@ -6,6 +6,7 @@ import 'package:tencent_cloud_chat_common/base/tencent_cloud_chat_theme_widget.d
 import 'package:tencent_cloud_chat_common/tencent_cloud_chat_common.dart';
 import 'package:tencent_cloud_chat_common/utils/tencent_cloud_chat_safe_dialog_pop.dart';
 import 'package:tencent_cloud_chat_contact/model/contact_presenter.dart';
+import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_contact_index_bar_fit.dart';
 import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_group_member_list.dart';
 
 class TencentCloudChatGroupTransferOwner extends StatefulWidget {
@@ -207,7 +208,12 @@ class TencentCloudChatGroupTransferMemberListState extends TencentCloudChatState
 
   @override
   Widget defaultBuilder(BuildContext context) {
-    return Scrollbar(
+    return LayoutBuilder(builder: (context, constraints) {
+      final indexBar = TencentCloudChatIndexBarFit.fit(
+          SuspensionUtil.getTagIndexList(list).where((element) => element != "@").toList(),
+          constraints.maxHeight,
+          textScale: MediaQuery.textScalerOf(context).scale(1.0));
+      return Scrollbar(
         child: AzListView(
       data: list,
       itemCount: list.length,
@@ -225,7 +231,9 @@ class TencentCloudChatGroupTransferMemberListState extends TencentCloudChatState
           child: _buildItem(item),
         );
       },
-      indexBarData: SuspensionUtil.getTagIndexList(list).where((element) => element != "@").toList(),
+      indexBarData: indexBar.tags,
+      indexBarItemHeight: indexBar.itemHeight,
+      indexBarOptions: indexBar.options,
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       susItemHeight: getSquareSize(30),
       susItemBuilder: (context, index) {
@@ -236,6 +244,7 @@ class TencentCloudChatGroupTransferMemberListState extends TencentCloudChatState
         return _buildTag(tag.getSuspensionTag());
       },
     ));
+    });
   }
 }
 

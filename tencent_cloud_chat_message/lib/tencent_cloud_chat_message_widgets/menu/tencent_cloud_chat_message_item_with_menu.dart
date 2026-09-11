@@ -369,7 +369,10 @@ class _TencentCloudChatMessageItemWithMenuState extends TencentCloudChatState<Te
     return menuItems;
   }
 
-  Widget _buildMobileMenuWidget({Key? key, bool keyed = true}) {
+  // [maxHeight] bounds the option list so a tall menu scrolls instead of
+  // running past the safe area; null (the offstage measuring copy) keeps the
+  // intrinsic height so _menuHeight stays the full size.
+  Widget _buildMobileMenuWidget({Key? key, bool keyed = true, double? maxHeight}) {
     return TencentCloudChatThemeWidget(
         build: (context, colorTheme, textStyle) => Material(
               color: Colors.transparent,
@@ -393,11 +396,16 @@ class _TencentCloudChatMessageItemWithMenuState extends TencentCloudChatState<Te
                     color: colorTheme.backgroundColor.withOpacity(0.8),
                     borderRadius: const BorderRadius.all(Radius.circular(10)),
                   ),
-                  child: Table(
-                    columnWidths: const <int, TableColumnWidth>{
-                      0: IntrinsicColumnWidth(),
-                    },
-                    children: _buildMobileMenuItems(colorTheme: colorTheme, textStyle: textStyle, keyed: keyed),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxHeight ?? double.infinity),
+                    child: SingleChildScrollView(
+                      child: Table(
+                        columnWidths: const <int, TableColumnWidth>{
+                          0: IntrinsicColumnWidth(),
+                        },
+                        children: _buildMobileMenuItems(colorTheme: colorTheme, textStyle: textStyle, keyed: keyed),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -444,38 +452,66 @@ class _TencentCloudChatMessageItemWithMenuState extends TencentCloudChatState<Te
 
       final textDirection = Directionality.of(context);
 
-      double screenHeight = MediaQuery.of(context).size.height;
-      // double screenWidth = MediaQuery.of(context).size.width;
+      // Everything below is Positioned in the ROOT Overlay, so bounds come
+      // from ITS MediaQuery (safe insets included) — the message's own
+      // context may sit under a Scaffold that already removed some padding.
+      final BuildContext overlayContext = Overlay.of(context).context;
+      final EdgeInsets safeInsets = MediaQuery.paddingOf(overlayContext);
+      final Size screenSize = MediaQuery.sizeOf(overlayContext);
+      final double screenWidth = screenSize.width;
+      const double gap = 16;
+      final double topBound = safeInsets.top + 8;
+      final double bottomBound = screenSize.height - safeInsets.bottom - 8;
+      final double leftBound = safeInsets.left + 8;
+      final double rightBound = screenWidth - safeInsets.right - 8;
+      final double available = max(0.0, bottomBound - topBound);
 
       RenderBox messageBox = context.findRenderObject() as RenderBox;
       Offset messagePosition = messageBox.localToGlobal(Offset.zero);
       Size messageSize = messageBox.size;
-      double availableSpace = screenHeight - messagePosition.dy - messageBox.size.height - 32;
 
-      double messageOffset = 0;
-
-      if (availableSpace < _menuHeight!) {
-        messageOffset = _menuHeight! - availableSpace + 16;
-      }
-
-      // Calculate the available space and positions for the Message Reaction bar
       double reactionBarHeight = widget.data.useMessageReaction ? 54 : 0;
-      double reactionBarWidth = widget.data.useMessageReaction ?  min(800, MediaQuery.of(context).size.width * 0.76) : 0;
-      bool showReactionBarAbove = messagePosition.dy - messageOffset > reactionBarHeight + 16;
+      double reactionBarWidth = widget.data.useMessageReaction ? min(800, screenWidth * 0.76) : 0;
+      final double reactionSlot = widget.data.useMessageReaction ? reactionBarHeight + gap : 0;
 
-      double totalHeight = messageBox.size.height + 16 + _menuHeight! + 16 + reactionBarHeight;
+      // Size menu and preview TOGETHER so the stack always fits the safe
+      // area: the menu keeps its intrinsic height as long as the preview can
+      // keep a 44-px strip (it scrolls when even that does not fit), then the
+      // preview is clipped to whatever is left. Pushing the menu off-screen
+      // was the old failure mode (390-px-tall screen, 500-px message).
+      final double minPreviewHeight = min(messageSize.height, 44.0);
+      final double menuShownHeight = max(
+          0.0, min(_menuHeight!, available - reactionSlot - gap - minPreviewHeight));
+      final double previewShownHeight =
+          max(0.0, min(messageSize.height, available - reactionSlot - gap - menuShownHeight));
+      final bool previewClipped = previewShownHeight < messageSize.height;
 
-      if (!showReactionBarAbove && totalHeight > screenHeight - messagePosition.dy) {
-        messageOffset += (reactionBarHeight + 16);
-      }
+      // Reaction bar goes above when it still fits there after the shift the
+      // menu needs to stay on-screen; otherwise it goes below the menu.
+      final double overflowBelow =
+          messagePosition.dy + previewShownHeight + gap + menuShownHeight - bottomBound;
+      final bool showReactionBarAbove = widget.data.useMessageReaction &&
+          messagePosition.dy - max(0.0, overflowBelow) >= topBound + reactionSlot;
+
+      final double minPreviewTop = topBound + (showReactionBarAbove ? reactionSlot : 0);
+      final double maxPreviewTop = max(
+          minPreviewTop,
+          bottomBound - previewShownHeight - gap - menuShownHeight - (showReactionBarAbove ? 0 : reactionSlot));
+      final double previewTop = messagePosition.dy.clamp(minPreviewTop, maxPreviewTop).toDouble();
+      // Positive shifts the preview up (the original behaviour); negative
+      // pulls a message that sits above the safe area back into view.
+      final double messageOffset = messagePosition.dy - previewTop;
 
       if (messageOffset == 0) {
         _menuAnimationController.forward();
       }
 
-      double reactionBarTop = showReactionBarAbove ? messagePosition.dy - messageOffset - 16 - reactionBarHeight : messagePosition.dy + messageBox.size.height - messageOffset + 32 + _menuHeight!;
+      final double menuTop = previewTop + previewShownHeight + gap;
+      final double menuMaxHeight = menuShownHeight;
 
-      double menuTop = messagePosition.dy + messageBox.size.height + 16 - messageOffset;
+      final double reactionBarTop = showReactionBarAbove
+          ? previewTop - gap - reactionBarHeight
+          : menuTop + menuShownHeight + gap;
 
       double menuLeft = textDirection == TextDirection.ltr
           ? ((widget.data.message.isSelf ?? true)
@@ -484,6 +520,7 @@ class _TencentCloudChatMessageItemWithMenuState extends TencentCloudChatState<Te
           : ((widget.data.message.isSelf ?? true)
               ? messagePosition.dx
               : messagePosition.dx + messageBox.size.width - _menuWidth!);
+      menuLeft = menuLeft.clamp(leftBound, max(leftBound, rightBound - _menuWidth!)).toDouble();
 
       double reactionBarLeft = textDirection == TextDirection.ltr
           ? ((widget.data.message.isSelf ?? true)
@@ -492,11 +529,18 @@ class _TencentCloudChatMessageItemWithMenuState extends TencentCloudChatState<Te
           : ((widget.data.message.isSelf ?? true)
           ? messagePosition.dx
           : messagePosition.dx + messageBox.size.width - reactionBarWidth);
+      reactionBarLeft = reactionBarLeft.clamp(leftBound, max(leftBound, rightBound - reactionBarWidth)).toDouble();
 
       Animation<double> messageTopTween = Tween<double>(
         begin: messagePosition.dy,
-        end: messagePosition.dy - messageOffset,
+        end: previewTop,
       ).animate(CurvedAnimation(parent: _messageActionsAnimationController, curve: Curves.easeOut));
+
+      final Widget previewItem = SelectionArea(
+        child: widget.methods.getMessageItemWidget(
+          renderOnMenuPreview: true,
+        ),
+      );
 
       _mobileMenuOverlayEntry = OverlayEntry(builder: (BuildContext context) {
         return AnimatedBuilder(
@@ -527,15 +571,17 @@ class _TencentCloudChatMessageItemWithMenuState extends TencentCloudChatState<Te
                             scale: _overlayMessageScaleAnimation,
                             child: Material(
                               color: Colors.transparent,
+                              // A preview taller than its share is clipped to
+                              // previewShownHeight and scrolls, so it can never
+                              // paint over the menu below it.
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
                                   maxWidth: messageSize.width,
+                                  maxHeight: previewClipped ? previewShownHeight : double.infinity,
                                 ),
-                                child: SelectionArea(
-                                  child: widget.methods.getMessageItemWidget(
-                                    renderOnMenuPreview: true,
-                                  ),
-                                ),
+                                child: previewClipped
+                                    ? SingleChildScrollView(child: previewItem)
+                                    : previewItem,
                               ),
                             ),
                           ),
@@ -545,7 +591,7 @@ class _TencentCloudChatMessageItemWithMenuState extends TencentCloudChatState<Te
                             top: menuTop,
                             child: ScaleTransition(
                               scale: _menuAnimation,
-                              child: _buildMobileMenuWidget(),
+                              child: _buildMobileMenuWidget(maxHeight: menuMaxHeight),
                             )),
                         Positioned(
                           left: reactionBarLeft,
@@ -672,7 +718,11 @@ class _TencentCloudChatMessageItemWithMenuState extends TencentCloudChatState<Te
     final double menuDy = min(tapDetails.dy as double, screenHeight - (_menuHeight ?? 320)).toDouble();
 
     final double reactionDx = min(screenWidth - (_reactionWidth ?? 254) , max(tapDetails.dx - (_reactionWidth ?? 254) + _menuWidth, (_reactionWidth ?? 254) + 4));
-    final double reactionDy = min((menuDy - (_reactionHeight ?? 50) - 4), max(tapDetails.dy - (_reactionHeight ?? 50) - 4, 8.toDouble()));
+    // Floor at the top safe inset: in a 600 px-tall window a menu pinned to
+    // the bottom put the reaction bar above y=0.
+    final double reactionDy = max(
+        MediaQuery.paddingOf(context).top + 8,
+        min((menuDy - (_reactionHeight ?? 50) - 4), max(tapDetails.dy - (_reactionHeight ?? 50) - 4, 8.toDouble())));
 
     _desktopMenuOverlayEntry = OverlayEntry(
         builder: (context) => TencentCloudChatThemeWidget(

@@ -353,6 +353,9 @@ class TencentCloudChatContactAddContactListItemState
         backgroundColor: Colors.transparent,
         context: context,
         isScrollControlled: true,
+        // Inset the sheet below the status bar; the builder caps its height
+        // to the MediaQuery this leaves it.
+        useSafeArea: true,
         builder: (context) {
           return TencentCloudChatContactAddContactsInfo(
               userFullInfo: widget.userFullInfo);

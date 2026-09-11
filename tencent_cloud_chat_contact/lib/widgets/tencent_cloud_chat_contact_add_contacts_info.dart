@@ -1,4 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:tencent_cloud_chat_common/components/tencent_cloud_chat_components_utils.dart';
 import 'package:tencent_cloud_chat_common/utils/tencent_cloud_chat_code_info.dart';
@@ -25,7 +27,9 @@ class TencentCloudChatContactAddContactsInfoState
   Widget defaultBuilder(BuildContext context) {
     return TencentCloudChatThemeWidget(
         build: (context, colorTheme, textStyle) => Container(
-              height: getHeight(775),
+              // Never taller than the sheet route's area (the caller passes
+              // useSafeArea: true, so the status bar is already excluded).
+              height: min(getHeight(775), MediaQuery.sizeOf(context).height),
               decoration: BoxDecoration(
                   color: colorTheme.contactAddContactInfoBackgroundColor,
                   borderRadius: BorderRadius.all(Radius.circular(getWidth(10)))),
@@ -68,11 +72,17 @@ class TencentCloudChatContactAddContactsInfoAppBarState
                 child: Row(
                   children: [
                     Padding(padding: EdgeInsets.only(left: getWidth(15))),
-                    Text(
-                      tL10n.back,
-                      style: TextStyle(
-                        color: colorTheme.contactBackButtonColor,
-                        fontSize: textStyle.fontsize_16,
+                    // Flexible: the leading slot is a fixed 100 px; long
+                    // locales / large text would overflow it.
+                    Flexible(
+                      child: Text(
+                        tL10n.back,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: colorTheme.contactBackButtonColor,
+                          fontSize: textStyle.fontsize_16,
+                        ),
                       ),
                     ),
                   ],
@@ -211,8 +221,13 @@ class TencentCloudChatContactAddContactsInfoBodyState
     if (showDetailAddInfo == false) {
       return Row(
         children: [
-          TencentCloudChat.instance.dataInstance.contact.contactBuilder
-              ?.getContactAddContactInfoButtonBuilder(widget.userFullInfo, openContactsDetailInfo)
+          // Expanded: the button fills the row from bounded constraints
+          // instead of sizing itself to the screen width.
+          Expanded(
+            child: TencentCloudChat.instance.dataInstance.contact.contactBuilder
+                    ?.getContactAddContactInfoButtonBuilder(widget.userFullInfo, openContactsDetailInfo) ??
+                const SizedBox.shrink(),
+          )
         ],
       );
     } else {
@@ -346,7 +361,7 @@ class TencentCloudChatContactAddContactsInfoButtonState
   Widget defaultBuilder(BuildContext context) {
     return TencentCloudChatThemeWidget(
         build: (context, colorTheme, textStyle) => Container(
-              width: MediaQuery.of(context).size.width,
+              width: double.infinity,
               margin: EdgeInsets.only(top: getHeight(20)),
               color: colorTheme.backgroundColor,
               padding: EdgeInsets.symmetric(vertical: getHeight(10), horizontal: getWidth(20)),
@@ -395,7 +410,7 @@ class TencentCloudChatContactAddContactsInfoVerificationState
                     padding: EdgeInsets.symmetric(horizontal: getWidth(16), vertical: getHeight(12)),
                     color: colorTheme.backgroundColor,
                     child: SizedBox(
-                      width: MediaQuery.of(context).size.width,
+                      width: double.infinity,
                       child: TextField(
                         // minLines: 1,
                         maxLines: 4,
@@ -567,7 +582,7 @@ class TencentCloudChatContactAddContactsDetailInfoSendButtonState
   Widget defaultBuilder(BuildContext context) {
     return TencentCloudChatThemeWidget(
         build: (context, colorTheme, textStyle) => Container(
-              width: MediaQuery.of(context).size.width,
+              width: double.infinity,
               padding: EdgeInsets.symmetric(vertical: getHeight(12), horizontal: getWidth(16)),
               color: colorTheme.backgroundColor,
               margin: EdgeInsets.only(top: getHeight(20)),

@@ -668,7 +668,14 @@ class _TencentCloudChatMessageVideoState extends TencentCloudChatMessageState<Te
   }
 
   (double, double) formatwh(double originw, double originh, String from) {
-    return (200.toDouble(), ((200 * originh) / originw).floor().toDouble());
+    // renderInfo can carry w == 0 (no snapshot yet): 200*h/0 = Infinity and
+    // Infinity.floor() throws. Fall back to a square placeholder.
+    if (originw <= 0 || originh <= 0) {
+      return (200.toDouble(), 200.toDouble());
+    }
+    // Cap portrait media at 1.5x width so a tall clip cannot fill the screen.
+    final double h = min(((200 * originh) / originw).floor().toDouble(), 200 * 1.5);
+    return (200.toDouble(), h);
   }
 
   getLoadingWidget(double w, double h) {

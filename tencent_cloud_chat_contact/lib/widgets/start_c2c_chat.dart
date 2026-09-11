@@ -11,6 +11,7 @@ import 'package:tencent_cloud_chat_common/tencent_cloud_chat_common.dart';
 import 'package:tencent_cloud_chat_contact/widgets/create_group.dart';
 import 'package:azlistview_all_platforms/azlistview_all_platforms.dart';
 import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_contact_azlist.dart';
+import 'package:tencent_cloud_chat_contact/widgets/tencent_cloud_chat_contact_index_bar_fit.dart';
 
 class StartC2CChat extends StatefulWidget {
   const StartC2CChat({super.key});
@@ -76,10 +77,17 @@ class _StartC2CChatState extends TencentCloudChatState<StartC2CChat> {
       );
     }
 
-    return AzListView(
+    return LayoutBuilder(builder: (context, constraints) {
+      final indexBar = TencentCloudChatIndexBarFit.fit(
+          SuspensionUtil.getTagIndexList(sortedFriendList).where((element) => element != "@").toList(),
+          constraints.maxHeight,
+          textScale: MediaQuery.textScalerOf(context).scale(1.0));
+      return AzListView(
       data: sortedFriendList,
       itemCount: sortedFriendList.length,
-      indexBarData: SuspensionUtil.getTagIndexList(sortedFriendList).where((element) => element != "@").toList(),
+      indexBarData: indexBar.tags,
+      indexBarItemHeight: indexBar.itemHeight,
+      indexBarOptions: indexBar.options,
       itemBuilder: (context, index) {
         V2TimFriendInfo friendInfo = sortedFriendList[index].friendInfo;
         return GestureDetector(
@@ -136,6 +144,7 @@ class _StartC2CChatState extends TencentCloudChatState<StartC2CChat> {
       },
       physics: const ClampingScrollPhysics(),
     );
+    });
   }
 
   void _fetchMembers() async {

@@ -280,7 +280,8 @@ class _TencentCloudChatMessageFileState extends TencentCloudChatMessageState<Ten
     }
     return Expanded(
       child: Container(
-        height: getHeight(22),
+        // minHeight, not height: large accessibility fonts must grow the row.
+        constraints: BoxConstraints(minHeight: getHeight(22)),
         padding: EdgeInsets.symmetric(horizontal: getSquareSize(4)),
         child: Row(
           children: [

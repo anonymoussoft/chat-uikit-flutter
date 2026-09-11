@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:tencent_cloud_chat_common/tencent_cloud_chat.dart';
@@ -75,7 +76,6 @@ class _TencentCloudChatGroupMemberSelectorState extends TencentCloudChatState<Te
   void initState() {
     super.initState();
     _filteredMemberList = widget.groupMemberList;
-    _focusNode.addListener(_updateHeight);
   }
 
   @override
@@ -85,12 +85,13 @@ class _TencentCloudChatGroupMemberSelectorState extends TencentCloudChatState<Te
   }
 
   double _updateHeight() {
-    double keyboardHeight = _focusNode.hasPrimaryFocus ? TencentCloudChat.instance.dataInstance.basic.keyboardHeight ?? getHeight(280) : 0;
-
+    // Content height only. The keyboard is handled in defaultBuilder from the
+    // live viewInsets: adding a cached keyboard height here only made the
+    // sheet taller, it never lifted its bottom edge above the keyboard.
     double headerHeight = getHeight(160);
     double listItemHeight = getHeight(46);
     double listHeight = widget.groupMemberList.length * listItemHeight;
-    double maxHeight = headerHeight + listHeight + keyboardHeight;
+    double maxHeight = headerHeight + listHeight;
 
     if (_actualHeight != maxHeight) {
       setState(() {
@@ -242,42 +243,52 @@ class _TencentCloudChatGroupMemberSelectorState extends TencentCloudChatState<Te
   }
 
   Widget _renderMemberList() {
-    return TencentCloudChatThemeWidget(
-      build: (context, colorTheme, textStyle) => Scrollbar(
-          controller: _scrollController,
-          child: Container(
-            color: colorTheme.backgroundColor,
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: _filteredMemberList.length,
-              itemBuilder: (context, index) {
-                final memberInfo = _filteredMemberList[index];
-                return _memberItem(member: memberInfo);
-              },
-            ),
-          )),
+    return SliverList.builder(
+      itemCount: _filteredMemberList.length,
+      itemBuilder: (context, index) {
+        final memberInfo = _filteredMemberList[index];
+        return _memberItem(member: memberInfo);
+      },
     );
   }
 
   @override
   Widget defaultBuilder(BuildContext context) {
-    double contentHeight = MediaQuery.of(context).size.height * 0.8;
-    double heightFactor = _actualHeight < contentHeight ? _actualHeight / MediaQuery.of(context).size.height : 0.8;
+    final double screenHeight = MediaQuery.sizeOf(context).height;
+    final double contentHeight = screenHeight * 0.8;
+    // Live keyboard inset, applied as bottom padding so the sheet's bottom
+    // edge (search field) lifts above the keyboard; the total stays capped at
+    // 0.8 × screen so the sheet never grows off the top.
+    final double bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final double sheetHeight = min(_actualHeight + bottomInset, contentHeight);
+    final double heightFactor = sheetHeight / screenHeight;
 
     return TencentCloudChatThemeWidget(
       build: (context, colorTheme, textStyle) => ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: FractionallySizedBox(
           heightFactor: heightFactor,
-          child: DefaultTabController(
-            length: 3,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _renderHeader(),
-                _renderSearchBar(),
-                Expanded(child: _renderMemberList()),
-              ],
+          child: Padding(
+            padding: EdgeInsets.only(bottom: min(bottomInset, sheetHeight)),
+            child: DefaultTabController(
+              length: 3,
+              // One scrollable for header + search + members: when the
+              // keyboard inset leaves less than the header's own height, the
+              // header and search bar scroll away instead of overflowing.
+              child: Container(
+                color: colorTheme.backgroundColor,
+                child: Scrollbar(
+                  controller: _scrollController,
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    slivers: [
+                      SliverToBoxAdapter(child: _renderHeader()),
+                      SliverToBoxAdapter(child: _renderSearchBar()),
+                      _renderMemberList(),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),

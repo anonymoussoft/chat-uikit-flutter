@@ -421,7 +421,7 @@ class _TencentCloudChatMessageImageState extends TencentCloudChatMessageState<Te
         // FileImage equality is (path, scale) only.
         key: ValueKey('$path#$_localRenderNonce'),
         fit: BoxFit.cover,
-        width: min(widget.data.messageRowWidth * 0.7, 198),
+        width: _imageWidth(),
         File(path),
         errorBuilder: (context, error, stackTrace) {
           console("local image render failed. please check the path is right. path: $path");
@@ -436,7 +436,7 @@ class _TencentCloudChatMessageImageState extends TencentCloudChatMessageState<Te
     // Live theme colours (mode-accurate) without a builder param: same source
     // the TencentCloudChatThemeWidget itself reads from.
     final colorTheme = TencentCloudChat.instance.dataInstance.theme.colorTheme;
-    double placeholderWidth = min(widget.data.messageRowWidth * 0.7, 198).toDouble();
+    double placeholderWidth = _imageWidth();
     double placeholderHeight = placeholderWidth * 1.33;
     return Container(
       // Automation anchor (`ForkUiKeys.messageImageLoading`): tells a driver
@@ -466,7 +466,7 @@ class _TencentCloudChatMessageImageState extends TencentCloudChatMessageState<Te
   getErrorWidget() {
     console("render image error");
     final colorTheme = TencentCloudChat.instance.dataInstance.theme.colorTheme;
-    double placeholderWidth = min(widget.data.messageRowWidth * 0.7, 198).toDouble();
+    double placeholderWidth = _imageWidth();
     double placeholderHeight = placeholderWidth * 1.33;
     return InkWell(
       // Automation anchor (`ForkUiKeys.messageImageError`). Its presence is the
@@ -532,7 +532,7 @@ class _TencentCloudChatMessageImageState extends TencentCloudChatMessageState<Te
           File(url),
           key: ValueKey('$onlineRenderKey#$url#$_localRenderNonce'),
           fit: BoxFit.cover,
-          width: min(widget.data.messageRowWidth * 0.7, 198),
+          width: _imageWidth(),
           errorBuilder: (context, error, stackTrace) {
             console("local image render failed. path: $url");
             // Same transient-decode recovery as renderLocalImage: this branch
@@ -550,7 +550,7 @@ class _TencentCloudChatMessageImageState extends TencentCloudChatMessageState<Te
           key: ValueKey(onlineRenderKey),
           imageUrl: url,
           fit: BoxFit.cover,
-          width: min(widget.data.messageRowWidth * 0.7, 198),
+          width: _imageWidth(),
           errorWidget: (context, error, stackTrace) {
             console("network image render failed. please check the path is right. url: $url");
             onlineRenderResult = false;
@@ -881,10 +881,26 @@ class _TencentCloudChatMessageImageState extends TencentCloudChatMessageState<Te
     }
   }
 
+  // Bubble interior width measured by the LayoutBuilder in defaultBuilder;
+  // infinite until the first layout.
+  double _bubbleInnerMaxWidth = double.infinity;
+
+  // On a 320 px phone with both avatar slots reserved the bubble interior is
+  // ~186 px, so the bare 198 px cap overflowed; bound by the measured interior.
+  double _imageWidth() {
+    final double capped = min(widget.data.messageRowWidth * 0.7, 198).toDouble();
+    return _bubbleInnerMaxWidth.isFinite ? min(capped, _bubbleInnerMaxWidth) : capped;
+  }
+
   @override
   Widget defaultBuilder(BuildContext context) {
     final maxBubbleWidth = widget.data.messageRowWidth * 0.8;
-    return TencentCloudChatThemeWidget(build: (context, colorTheme, textStyle) {
+    return LayoutBuilder(builder: (context, constraints) {
+      // Bubble padding (4+4) and border (1+1) come off the incoming width.
+      _bubbleInnerMaxWidth = constraints.maxWidth.isFinite
+          ? max(0.0, constraints.maxWidth - getWidth(4) * 2 - 2)
+          : double.infinity;
+      return TencentCloudChatThemeWidget(build: (context, colorTheme, textStyle) {
       return Container(
         padding: EdgeInsets.symmetric(horizontal: getWidth(4), vertical: getHeight(4)),
         decoration: BoxDecoration(
@@ -926,6 +942,7 @@ class _TencentCloudChatMessageImageState extends TencentCloudChatMessageState<Te
           ],
         ),
       );
+      });
     });
   }
 }

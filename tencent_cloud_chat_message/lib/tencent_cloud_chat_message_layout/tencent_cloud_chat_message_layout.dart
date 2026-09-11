@@ -31,18 +31,35 @@ class _TencentCloudChatMessageLayoutState extends TencentCloudChatState<TencentC
     return Scaffold(
       appBar: widget.widgets.header,
       // resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                FocusScope.of(context).unfocus();
-              },
-              child: widget.widgets.messageListView,
-            ),
-          ),
-          widget.widgets.messageInput,
-        ],
+      // The input used to be an unbounded non-flex child: reply bar + a
+      // multi-line composer + the sticker panel on a landscape phone pushed
+      // the list to zero and the Column overflowed. Bound the input so its
+      // sticker panel (the only part that can shrink) yields. The list keeps
+      // up to a 96-px strip, but only out of height the composer does not
+      // need: the reservation fades to 0 below a 296-px body, so a
+      // keyboard-shrunk body (e.g. 114 px on a landscape phone) goes entirely
+      // to the fixed composer instead of leaving it 18 px.
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final double body = constraints.maxHeight;
+          final double listReserve = (body - 200).clamp(0.0, 96.0).toDouble();
+          return Column(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                  },
+                  child: widget.widgets.messageListView,
+                ),
+              ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: body - listReserve),
+                child: widget.widgets.messageInput,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -75,7 +92,9 @@ class _TencentCloudChatMessageLayoutState extends TencentCloudChatState<TencentC
               _dragging = false;
             });
           },
-          child: Stack(
+          // LayoutBuilder: the sticker panel is a Positioned child of this
+          // Stack and needs the pane width to clamp itself inside it.
+          child: LayoutBuilder(builder: (context, paneConstraints) => Stack(
             children: [
               Column(
                 children: [
@@ -104,13 +123,14 @@ class _TencentCloudChatMessageLayoutState extends TencentCloudChatState<TencentC
                   desktopStickerBoxPositionX: widget.data.desktopStickerBoxPositionX,
                   desktopStickerBoxPositionY: widget.data.desktopStickerBoxPositionY,
                   stickerPluginInstance: widget.data.stickerPluginInstance!,
+                  paneWidth: paneConstraints.maxWidth,
                 ),
               if (_dragging)
                 TencentCloudChatMessageDropTarget(
                   currentConversationShowName: widget.data.currentConversationShowName,
                 ),
             ],
-          )),
+          ))),
     );
   }
 }

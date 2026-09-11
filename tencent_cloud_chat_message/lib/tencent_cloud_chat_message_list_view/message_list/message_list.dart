@@ -669,26 +669,30 @@ class MessageListState extends State<MessageList> {
   Widget build(BuildContext context) {
     return Stack(children: [
       Positioned(top: 0, left: 0, right: 0, bottom: 0, child: _renderList()),
+      // One layer for every floating button: two Positioned at the same
+      // right/bottom drew the unread chip and the new-messages/scroll-to-
+      // bottom chip on top of each other when both were visible.
       Positioned(
           top: widget.unreadMsgButtonPosition.top,
           left: widget.unreadMsgButtonPosition.left,
           right: widget.unreadMsgButtonPosition.right,
           bottom: widget.unreadMsgButtonPosition.bottom,
-          child: Wrap(
-            direction: Axis.vertical,
-            crossAxisAlignment: WrapCrossAlignment.end,
-            spacing: 20,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _renderUnreadMsgButton(),
-              _renderMessagesMentionedMeButton(),
+              Wrap(
+                direction: Axis.vertical,
+                crossAxisAlignment: WrapCrossAlignment.end,
+                spacing: 20,
+                children: [
+                  _renderUnreadMsgButton(),
+                  _renderMessagesMentionedMeButton(),
+                ],
+              ),
+              _renderNewMessagesButtonOrScrollToTop(),
             ],
           )),
-      Positioned(
-          top: widget.receivedMsgButtonPosition.top,
-          left: widget.receivedMsgButtonPosition.left,
-          right: widget.receivedMsgButtonPosition.right,
-          bottom: widget.receivedMsgButtonPosition.bottom,
-          child: _renderNewMessagesButtonOrScrollToTop()),
     ]);
   }
 

@@ -208,8 +208,11 @@ class _TencentCloudChatMessageTextState extends TencentCloudChatMessageState<Ten
         (widget.data.showMessageStatusIndicator && sentFromSelf) || widget.data.showMessageTimeIndicator;
     return TencentCloudChatThemeWidget(build: (context, colorTheme, textStyle) {
       return ConstrainedBox(
+        // The desktop row already reserves the avatar slot OUTSIDE the bubble
+        // and status/time live INSIDE it, so subtracting 128/102 again starved
+        // narrow panes (214 px at W=428). Floor keeps status+time on one line.
         constraints: BoxConstraints(
-            maxWidth: min(maxBubbleWidth * 0.9, maxBubbleWidth - getSquareSize(sentFromSelf ? 128 : 102))),
+            maxWidth: max(getSquareSize(160), maxBubbleWidth * 0.9)),
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: getWidth(10), vertical: getHeight(8)),
           decoration: BoxDecoration(

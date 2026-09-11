@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:tencent_cloud_chat_common/base/tencent_cloud_chat_theme_widget.dart';
 import 'package:tencent_cloud_chat_common/tencent_cloud_chat_common.dart';
@@ -8,6 +10,10 @@ class TencentCloudChatDesktopStickerPanel extends StatefulWidget {
   final double desktopStickerBoxPositionX;
   final double desktopStickerBoxPositionY;
   final TencentCloudChatPlugin stickerPluginInstance;
+  /// Width of the message-pane Stack this panel is positioned in; used to
+  /// shrink/clamp the panel so it never overflows a narrow pane. Infinite
+  /// (the default) means "no clamping".
+  final double paneWidth;
   // final TextFieldWebController textFieldWebController;
   const TencentCloudChatDesktopStickerPanel( // this.textFieldWebController,
       {
@@ -15,6 +21,7 @@ class TencentCloudChatDesktopStickerPanel extends StatefulWidget {
     required this.desktopStickerBoxPositionX,
     required this.desktopStickerBoxPositionY,
     required this.stickerPluginInstance,
+    this.paneWidth = double.infinity,
   }) : super(key: key);
 
   @override
@@ -34,9 +41,14 @@ class _TencentCloudChatDesktopStickerPanelState extends TencentCloudChatState<Te
 
   @override
   Widget defaultBuilder(BuildContext context) {
-    double width = 440;
     double height = 300;
-    final double positionX = widget.desktopStickerBoxPositionX;
+    // Shrink to the pane and clamp the left edge (8 px gutters) so the panel
+    // never overflows a narrow desktop pane when anchored near its right side.
+    final double pane = widget.paneWidth;
+    final double width = pane.isFinite ? min(440.0, max(0.0, pane - 16)) : 440.0;
+    final double positionX = pane.isFinite
+        ? widget.desktopStickerBoxPositionX.clamp(8.0, max(8.0, pane - width - 8)).toDouble()
+        : widget.desktopStickerBoxPositionX;
     final double positionY = widget.desktopStickerBoxPositionY + 10;
     return Positioned(
       left: positionX,

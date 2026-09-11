@@ -249,23 +249,34 @@ class TencentCloudChatContactApplicationItemState
                     vertical: getHeight(8),
                     horizontal: getWidth(8),
                   ),
-                  child: Row(
-                    children: [
-                      TencentCloudChat
-                          .instance.dataInstance.contact.contactBuilder
-                          ?.getContactApplicationItemAvatarBuilder(
-                              widget.application),
-                      TencentCloudChat
-                          .instance.dataInstance.contact.contactBuilder
-                          ?.getContactApplicationItemContentBuilder(
-                              widget.application),
-                      TencentCloudChat
-                          .instance.dataInstance.contact.contactBuilder
-                          ?.getContactApplicationItemButtonBuilder(
-                              widget.application,
-                              applicationResult,
-                              getApplicationResultFromButton)
-                    ],
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Row(
+                      children: [
+                        TencentCloudChat
+                            .instance.dataInstance.contact.contactBuilder
+                            ?.getContactApplicationItemAvatarBuilder(
+                                widget.application),
+                        TencentCloudChat
+                            .instance.dataInstance.contact.contactBuilder
+                            ?.getContactApplicationItemContentBuilder(
+                                widget.application),
+                        // Bounded to half the row (not Flexible: a loose flex
+                        // child would still take a fixed 50% share away from
+                        // the Expanded name column). The pair keeps its
+                        // natural width and only shrinks past this cap.
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth / 2),
+                          child: TencentCloudChat
+                                  .instance.dataInstance.contact.contactBuilder
+                                  ?.getContactApplicationItemButtonBuilder(
+                                      widget.application,
+                                      applicationResult,
+                                      getApplicationResultFromButton) ??
+                              const SizedBox.shrink(),
+                        )
+                      ],
+                    ),
                   ),
                 )));
   }
@@ -462,49 +473,63 @@ class TencentCloudChatApplicationItemButtonState
 
     return TencentCloudChatThemeWidget(
         build: (context, colorTheme, textStyle) => Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: getWidth(10)),
-                  padding: EdgeInsets.symmetric(
-                      horizontal: getWidth(12), vertical: getHeight(5)),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(getSquareSize(8)),
-                    color: colorTheme.contactAgreeButtonColor,
-                  ),
-                  child: GestureDetector(
-                    key: ValueKey(
-                      'contact_application_accept_button:${widget.application.userID}',
+                // Flexible + FittedBox(scaleDown): the parent item Row bounds
+                // this pair, so the labels scale down at large text sizes
+                // instead of overflowing.
+                Flexible(
+                  child: Container(
+                    margin: EdgeInsets.symmetric(horizontal: getWidth(10)),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: getWidth(12), vertical: getHeight(5)),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(getSquareSize(8)),
+                      color: colorTheme.contactAgreeButtonColor,
                     ),
-                    onTap: onAcceptApplication,
-                    child: Text(
-                      tL10n.accept,
-                      style: TextStyle(
-                          color: colorTheme.contactBackgroundColor,
-                          fontSize: textStyle.fontsize_14,
-                          fontWeight: FontWeight.w400),
+                    child: GestureDetector(
+                      key: ValueKey(
+                        'contact_application_accept_button:${widget.application.userID}',
+                      ),
+                      onTap: onAcceptApplication,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          tL10n.accept,
+                          style: TextStyle(
+                              color: colorTheme.contactBackgroundColor,
+                              fontSize: textStyle.fontsize_14,
+                              fontWeight: FontWeight.w400),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: getWidth(12), vertical: getHeight(5)),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(getSquareSize(8)),
-                    border:
-                        Border.all(color: colorTheme.contactTabItemIconColor),
-                    color: colorTheme.contactBackgroundColor,
-                  ),
-                  child: GestureDetector(
-                    key: ValueKey(
-                      'contact_application_decline_button:${widget.application.userID}',
+                Flexible(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: getWidth(12), vertical: getHeight(5)),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(getSquareSize(8)),
+                      border:
+                          Border.all(color: colorTheme.contactTabItemIconColor),
+                      color: colorTheme.contactBackgroundColor,
                     ),
-                    onTap: onRefuseApplication,
-                    child: Text(
-                      tL10n.refuse,
-                      style: TextStyle(
-                          color: colorTheme.contactRefuseButtonColor,
-                          fontSize: textStyle.fontsize_14,
-                          fontWeight: FontWeight.w400),
+                    child: GestureDetector(
+                      key: ValueKey(
+                        'contact_application_decline_button:${widget.application.userID}',
+                      ),
+                      onTap: onRefuseApplication,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          tL10n.refuse,
+                          style: TextStyle(
+                              color: colorTheme.contactRefuseButtonColor,
+                              fontSize: textStyle.fontsize_14,
+                              fontWeight: FontWeight.w400),
+                        ),
+                      ),
                     ),
                   ),
                 )
